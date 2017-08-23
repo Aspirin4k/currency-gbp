@@ -51,9 +51,14 @@ func getXML(url string) ([]byte, error) {
 func main() {
 	// На входе 2 параметра: валюта и ее количество
 	// На выходе должно быть значение в разных валютах
-	currency := flag.String("currency", "USD", "")
-	value := flag.Int("value", 10, "")
+	currency := flag.String("currency", "USD", "Валюта, относительно которой считать")
+	value := flag.Int("value", 10, "Количество этой валюты")
 	flag.Parse()
+
+	if *value <= 0 {
+		fmt.Println("Количество валюты не может быть отрицательным")
+		return
+	}
 
 	// код валюты и (в будущем) ее курс относительно рубля
 	cur := strings.ToUpper(*currency)
@@ -72,19 +77,27 @@ func main() {
 		decoder.CharsetReader = charset.NewReader
 		decoder.Decode(&q)
 
-		fmt.Printf("%d %s, в других валютах это:\n",*value, cur)
-
 		if cur != "RUB" {
+			no_val := true
 			for _, valute := range q.ValuteList {
 				if valute.CharCode == cur {
 					// Т.к. в хмл вместо \. используются \, , необходимо заменить и запарсить
 					cur_val, _ = strconv.ParseFloat(strings.Replace(valute.Value,",",".",-1),64)
+					no_val = false
 					break
 				}
 			}
+
+			// Если пользователь ввел какую-нибудь абракадабру, то покидаем приложение
+			if no_val {
+				fmt.Println("Указанной валюты не существует (либо о ней нет информации)")
+				return
+			}
+
 			fmt.Printf("\tRUB: %10.2f (Российский рубль)\n", float64(*value) * cur_val)
 		}
 
+		fmt.Printf("%d %s, в других валютах это:\n",*value, cur)
 		// Генерация выходного списка
 		for _, valute := range q.ValuteList {
 			if valute.CharCode != cur {
